@@ -1,6 +1,7 @@
 import sys
 import pygame
 from time import sleep
+import json
 
 from bullet import Bullet
 from alien import Alien
@@ -11,7 +12,8 @@ def fire_bullet(ai_settings,screen,ship,bullets):
         new_bullet = Bullet(ai_settings,screen,ship)
         bullets.add(new_bullet)
 
-def check_keydown_events(event,ai_settings,screen,ship,bullets):
+def check_keydown_events(event, ai_settings, stats, screen,
+        ship, bullets):
     '''响应按键'''
     if event.key == pygame.K_RIGHT:
         #向右移动飞船
@@ -23,6 +25,8 @@ def check_keydown_events(event,ai_settings,screen,ship,bullets):
         #创建一个子弹并且加入bullets中
         fire_bullet(ai_settings,screen,ship,bullets)
     elif event.key == pygame.K_q:
+        #存储当前最高分数并推出
+        store_high_score(stats.high_score)
         sys.exit()
         
 def check_keyup_events(event,ship):
@@ -32,8 +36,8 @@ def check_keyup_events(event,ship):
     elif event.key == pygame.K_LEFT:
         ship.moving_left = False
 
-def check_play_button(event, ai_settings, screen, stats, sb, ship, mouse_x, mouse_y,
-        play_button, bullets, aliens):
+def check_play_button(event, ai_settings, screen, stats, sb, ship,
+        mouse_x, mouse_y, play_button, bullets, aliens):
     """响应playa按钮,game start"""
     button_clicked = play_button.rect.collidepoint(mouse_x, mouse_y)
     if button_clicked and not stats.game_active :
@@ -62,9 +66,12 @@ def check_events(ai_settings, screen, stats, sb, ship, play_button, bullets, ali
     """响应按键和鼠标事件"""
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
+            #存储当前最高分数，并推出
+            store_high_score(stats.high_score)
             sys.exit()
         elif event.type == pygame.KEYDOWN:
-            check_keydown_events(event,ai_settings,screen,ship,bullets)
+            check_keydown_events(event, ai_settings, stats,
+                    screen, ship, bullets)
         elif event.type == pygame.KEYUP:
             check_keyup_events(event,ship)
         elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -77,6 +84,11 @@ def check_high_score(stats, sb):
     if stats.score > stats.high_score:
         stats.high_score = stats.score
         sb.prep_high_score()
+
+def start_new_level(stats, sb):
+    """玩家等级加1"""
+    stats.level += 1
+    sb.prep_level()
 
 def check_bullet_alien_collisions(ai_settings, aliens, screen, stats, sb, ship, bullets):
     """响应子弹和外星人碰撞"""
@@ -95,8 +107,7 @@ def check_bullet_alien_collisions(ai_settings, aliens, screen, stats, sb, ship, 
         #加快游戏进程
         ai_settings.increase_speed()
         #玩家等级加一
-        stats.level += 1
-        sb.prep_level()
+        start_new_level(stats, sb)
         
         create_fleet(ai_settings, screen, ship, aliens)
 
@@ -226,3 +237,11 @@ def update_aliens(ai_settings, stats, screen, sb, ship, bullets, aliens):
     #检查是否有外星人到达屏幕底端
     check_aliens_bottom(ai_settings, screen, stats, sb, ship, aliens, bullets)
         
+def store_high_score(high_score):
+    """将最高分存储在文件中"""
+    game_data={"best_score":high_score}
+    try:
+        with open("./high_socre.txt", 'w') as f_obj:
+            json.dump(game_data, f_obj)
+    except FileNotFoundError:
+        print("Some error has happend!")
